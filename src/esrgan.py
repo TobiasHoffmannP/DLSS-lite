@@ -9,82 +9,6 @@ import os
 import torchvision.transforms as transforms
 import torchvision.models as models
 
-# RRDB block
-# class RRDBBlock(nn.Module):
-#     def __init__(self, nf=64, gc=32):
-#         super().__init__()
-#         self.conv1 = nn.Conv2d(nf, gc, 3, 1, 1)
-#         self.conv2 = nn.Conv2d(nf + gc, gc, 3, 1, 1)
-#         self.conv3 = nn.Conv2d(nf + 2 * gc, nf, 3, 1, 1)
-#         self.lrelu = nn.LeakyReLU(0.2, inplace=True)
-    
-#     def forward(self, x):
-#         out1 = self.lrelu(self.conv1(x))
-#         out2 = self.lrelu(self.conv2(torch.cat([x, out1], 1)))
-#         out3 = self.lrelu(self.conv3(torch.cat([x, out1, out2], 1)))
-#         return out3 + x
-
-# class ESRGAN(nn.Module):
-#     def __init__(self, scale=2, num_feat=64, num_block=23, num_grow_ch=32):
-#         super().__init__()
-#         self.scale = scale
-        
-#         self.head = nn.Conv2d(3, num_feat, 3, 1, 1)
-        
-#         # 23 RRDB blocks
-#         self.body = nn.ModuleList([
-#             RRDBBlock(num_feat, num_grow_ch) for _ in range(num_block)
-#         ])
-        
-#         self.tail1 = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
-#         self.upscale = nn.Sequential(
-#             nn.Conv2d(num_feat, num_feat * scale * scale, 3, 1, 1),
-#             nn.PixelShuffle(scale)
-#         )
-#         self.tail2 = nn.Sequential(
-#             nn.Conv2d(num_feat, num_feat // 2, 3, 1, 1),
-#             nn.LeakyReLU(0.2),
-#             nn.Conv2d(num_feat // 2, 3, 3, 1, 1)
-#         )
-    
-#     def forward(self, x):
-#         feat = self.head(x)
-#         body_feat = feat
-#         for block in self.body:
-#             body_feat = block(body_feat)
-        
-#         feat = feat + self.tail1(body_feat)
-#         feat = self.upscale(feat)
-#         return self.tail2(feat)
-
-# class RRDBBlock(nn.Module):
-#     def __init__(self, channels):
-#         super().__init__()
-#         self.conv1 = nn.Conv2d(channels, channels, 3, 1, 1)
-#         self.conv2 = nn.Conv2d(channels, channels, 3, 1, 1)
-#         self.conv3 = nn.Conv2d(channels, channels, 3, 1, 1)
-
-#         self.conv4 = nn.Conv2d(channels, channels, 3, 1, 1)
-
-#         self.conv5 = nn.Conv2d(channels, channels, 3, 1, 1)
-        
-#         self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
-        
-#     def forward(self, x):
-#         out = self.conv1(x)
-#         out = self.lrelu(out + x)  # Dense connection 1
-
-#         out = self.conv2(out)
-#         out = self.lrelu(out + x)  # Dense connection 2  
-
-#         out = self.conv3(out)
-#         out = self.lrelu(out + x)
-
-#         out = self.conv4(out)
-#         out = self.lrelu(out + x)
-
-#         return self.conv5(out) 
-
 class DenseBlock(nn.Module):
     def __init__(self, channels=64, growth_channels=32):
         super().__init__()
@@ -298,27 +222,12 @@ def main():
 
     # ESRGAN model
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # model = ESRGAN(scale=2, num_feat=64, num_block=23, num_grow_ch=32).to(device)
     model = ESRGAN(scale=2, channels=64).to(device)
 
     vgg_loss = VGUloss().to(device)
     discriminator = Discriminator(input_shape=(3, 128, 128)).to(device)
     optimizer_D = optim.Adam(discriminator.parameters(), lr=1e-4, betas=(0.9, 0.999))
     criterion_GAN = nn.BCEWithLogitsLoss().to(device)
-
-    # total_params = sum(p.numel() for p in model.parameters())
-    # print(f"TOTAL: {total_params:,}")
-
-    # # Print breakdown
-    # print(f"Head: {sum(p.numel() for p in model.head.parameters()):,}")
-    # print(f"Tail1: {model.tail1.weight.numel():,}")
-    # print(f"Upscale conv: {model.upscale[0].weight.numel():,}")
-    # print(f"Tail2: {sum(p.numel() for p in model.tail2.parameters()):,}")
-
-    # # RRDB blocks (should be ~15M!)
-    # rrdb_params = sum(sum(p.numel() for p in block.parameters()) for block in model.body)
-    # print(f"23 RRDB blocks: {rrdb_params:,}")
-    # print(f"Per RRDB block: {rrdb_params/23:,.0f}")
 
     print(f"ESRGAN training on {device}")
     print(f"Params: {sum(p.numel() for p in model.parameters()):,}")
@@ -330,11 +239,10 @@ def main():
     best_psnr = 0
     epochs = 100
 
-    # warmup_epochs = 5  # In real training, this should be higher (e.g., 10-20% of total)
-
+    # Warmup generator with L1 loss (generator needs to be trained a bit first otherwise it is too hard for discriminator)
     if not os.path.exists(MODEL_DIR / 'warmup_generator.pth'):
         print("Starting Warmup (L1 Loss only)...")
-        for epoch in range(5): # Increase this number for real training
+        for epoch in range(5):
             model.train()
             for lr, hr in train_loader:
                 lr, hr = lr.to(device), hr.to(device)
@@ -393,12 +301,6 @@ def main():
             loss_l1 = nn.functional.l1_loss(sr_batch, hr_batch)
 
             total_loss_G = 0.005 * loss_GAN + 1.0 * loss_vgg + 0.01 * loss_l1
-
-            # 
-
-            # # perceptrual + L1 loss
-            # loss = perceptual_loss(sr_batch, hr_batch)
-            # loss.backward()
 
             total_loss_G.backward()
             optimizer_g.step()
