@@ -298,27 +298,12 @@ def main():
 
     # ESRGAN model
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # model = ESRGAN(scale=2, num_feat=64, num_block=23, num_grow_ch=32).to(device)
     model = ESRGAN(scale=2, channels=64).to(device)
 
     vgg_loss = VGUloss().to(device)
     discriminator = Discriminator(input_shape=(3, 128, 128)).to(device)
     optimizer_D = optim.Adam(discriminator.parameters(), lr=1e-4, betas=(0.9, 0.999))
     criterion_GAN = nn.BCEWithLogitsLoss().to(device)
-
-    # total_params = sum(p.numel() for p in model.parameters())
-    # print(f"TOTAL: {total_params:,}")
-
-    # # Print breakdown
-    # print(f"Head: {sum(p.numel() for p in model.head.parameters()):,}")
-    # print(f"Tail1: {model.tail1.weight.numel():,}")
-    # print(f"Upscale conv: {model.upscale[0].weight.numel():,}")
-    # print(f"Tail2: {sum(p.numel() for p in model.tail2.parameters()):,}")
-
-    # # RRDB blocks (should be ~15M!)
-    # rrdb_params = sum(sum(p.numel() for p in block.parameters()) for block in model.body)
-    # print(f"23 RRDB blocks: {rrdb_params:,}")
-    # print(f"Per RRDB block: {rrdb_params/23:,.0f}")
 
     print(f"ESRGAN training on {device}")
     print(f"Params: {sum(p.numel() for p in model.parameters()):,}")
@@ -330,11 +315,10 @@ def main():
     best_psnr = 0
     epochs = 100
 
-    # warmup_epochs = 5  # In real training, this should be higher (e.g., 10-20% of total)
-
+    # Warmup generator with L1 loss (generator needs to be trained a bit first otherwise it is too hard for discriminator)
     if not os.path.exists(MODEL_DIR / 'warmup_generator.pth'):
         print("Starting Warmup (L1 Loss only)...")
-        for epoch in range(5): # Increase this number for real training
+        for epoch in range(5):
             model.train()
             for lr, hr in train_loader:
                 lr, hr = lr.to(device), hr.to(device)
@@ -393,12 +377,6 @@ def main():
             loss_l1 = nn.functional.l1_loss(sr_batch, hr_batch)
 
             total_loss_G = 0.005 * loss_GAN + 1.0 * loss_vgg + 0.01 * loss_l1
-
-            # 
-
-            # # perceptrual + L1 loss
-            # loss = perceptual_loss(sr_batch, hr_batch)
-            # loss.backward()
 
             total_loss_G.backward()
             optimizer_g.step()

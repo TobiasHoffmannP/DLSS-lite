@@ -36,20 +36,19 @@ def test_div2k_game_size(div2k_path):
     hr_img = cv2.imread(hr_path)
     hr_img = cv2.cvtColor(hr_img, cv2.COLOR_BGR2RGB)
     
-    # SIMULATE YOUR GAME PIPELINE:
-    # 1. Downscale to game LR size (640x360)
+    # Downscale to game LR size (640x360)
     lr_game = cv2.resize(hr_img, (640, 360), interpolation=cv2.INTER_LINEAR)
     
-    # 2. Model input tensor
+    # Model input tensor
     lr_tensor = torch.from_numpy(lr_game).permute(2, 0, 1).float() / 255.0
     lr_tensor = lr_tensor.unsqueeze(0).to(device)
     
-    # 3. Upscale x2 (to 1280x720)
+    # Upscale x2 (to 1280x720)
     with torch.no_grad():
         sr_simple = simplesr(lr_tensor)
         sr_esrgan = esrgan(lr_tensor)
     
-    # 4. Display (all 1280x720)
+    # Display (all 1280x720)
     lr_np = (lr_tensor.squeeze().cpu().numpy().transpose(1,2,0) * 255).astype(np.uint8)
     lr_display = cv2.resize(lr_np, (1280, 720))  # Upscale LR for comparison
     sr_simple_np = (sr_simple.squeeze().cpu().numpy().transpose(1,2,0) * 255).astype(np.uint8)
@@ -61,7 +60,7 @@ def test_div2k_game_size(div2k_path):
     bottom_row = np.hstack([sr_simple_np, sr_esrgan_np])
     combined = np.vstack([top_row, bottom_row])
     
-    # Shrink 3x
+    
     combined_small = cv2.resize(combined, (combined.shape[1]//1, combined.shape[0]//1))
     
     cv2.imshow("GAME SIZE: LR | HR | SimpleSR | ESRGAN", combined_small)
