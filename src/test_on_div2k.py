@@ -20,13 +20,13 @@ simplesr.load_state_dict(torch.load('models/simpleSR/v1.1/best_simple_sr.pth'))
 
 # esrgan = ESRGAN(scale=2, num_feat=64, num_block=23, num_grow_ch=32).to(device)
 esrgan = ESRGAN(scale=2, channels=64).to(device)
-esrgan.load_state_dict(torch.load('models/esrganSR/v3_vgg_discriminator/best_esrgan_sr.pth', map_location=device))
+esrgan.load_state_dict(torch.load('models/esrganSR/best_esrgan_sr.pth', map_location=device))
 
 esrgan.eval()
 simplesr.eval()
 
 def test_div2k_game_size(div2k_path):
-    """Test DIV2K at GAME resolution (640x360 → 1280x720)"""
+    """Test DIV2K at GAME resolution (1020x678 → 2040x1356)"""
     # Pick random HR
     hr_files = glob.glob(os.path.join(div2k_path, '**', '*.png'), recursive=True)
     hr_path = np.random.choice(hr_files)
@@ -36,17 +36,21 @@ def test_div2k_game_size(div2k_path):
     hr_img = cv2.imread(hr_path)
     hr_img = cv2.cvtColor(hr_img, cv2.COLOR_BGR2RGB)
     
-    # Downscale to game LR size (640x360)
+    # Downscale to game LR size (1020x678)
     lr_game = cv2.resize(hr_img, (1020, 678), interpolation=cv2.INTER_LINEAR)
     
     # Model input tensor
     lr_tensor = torch.from_numpy(lr_game).permute(2, 0, 1).float() / 255.0
     lr_tensor = lr_tensor.unsqueeze(0).to(device)
     
-    # Upscale x2 (to 2040, 1356)
+    # Upscale x2 (to 2040, 1356 (native image res))
     with torch.no_grad():
         sr_simple = simplesr(lr_tensor)
         sr_esrgan = esrgan(lr_tensor)
+
+    # Clamp to [0,1]
+    sr_simple = torch.clamp(sr_simple, 0.0, 1.0)
+    sr_esrgan = torch.clamp(sr_esrgan, 0.0, 1.0)
     
     # Display (all 2040x1356)
     lr_np = (lr_tensor.squeeze().cpu().numpy().transpose(1,2,0) * 255).astype(np.uint8)
@@ -54,10 +58,16 @@ def test_div2k_game_size(div2k_path):
     sr_simple_np = (sr_simple.squeeze().cpu().numpy().transpose(1,2,0) * 255).astype(np.uint8)
     sr_esrgan_np = (sr_esrgan.squeeze().cpu().numpy().transpose(1,2,0) * 255).astype(np.uint8)
     hr_display = cv2.resize(hr_img, (2040, 1356), interpolation=cv2.INTER_AREA)
-    
+
+    # convert to RGB
+    lr_display = cv2.cvtColor(cv2.resize(lr_np, (2040, 1356)), cv2.COLOR_RGB2BGR)
+    sr_simple_display = cv2.cvtColor(sr_simple_np, cv2.COLOR_RGB2BGR)
+    sr_esrgan_display = cv2.cvtColor(sr_esrgan_np, cv2.COLOR_RGB2BGR)
+    hr_display = cv2.cvtColor(cv2.resize(hr_img, (2040, 1356), interpolation=cv2.INTER_AREA), cv2.COLOR_RGB2BGR)
+
     # Perfect 2x2 layout
     top_row = np.hstack([lr_display, hr_display])
-    bottom_row = np.hstack([sr_simple_np, sr_esrgan_np])
+    bottom_row = np.hstack([sr_simple_display, sr_esrgan_display])
     combined = np.vstack([top_row, bottom_row])
     
     
