@@ -20,7 +20,7 @@ simplesr.load_state_dict(torch.load('models/simpleSR/v1.1/best_simple_sr.pth'))
 
 # esrgan = ESRGAN(scale=2, num_feat=64, num_block=23, num_grow_ch=32).to(device)
 esrgan = ESRGAN(scale=2, channels=64).to(device)
-esrgan.load_state_dict(torch.load('models/esrganSR/best_esrgan_sr.pth', map_location=device))
+esrgan.load_state_dict(torch.load('models/esrganSR/v3_vgg_discriminator/best_esrgan_sr.pth', map_location=device))
 
 esrgan.eval()
 simplesr.eval()
@@ -37,23 +37,23 @@ def test_div2k_game_size(div2k_path):
     hr_img = cv2.cvtColor(hr_img, cv2.COLOR_BGR2RGB)
     
     # Downscale to game LR size (640x360)
-    lr_game = cv2.resize(hr_img, (640, 360), interpolation=cv2.INTER_LINEAR)
+    lr_game = cv2.resize(hr_img, (1020, 678), interpolation=cv2.INTER_LINEAR)
     
     # Model input tensor
     lr_tensor = torch.from_numpy(lr_game).permute(2, 0, 1).float() / 255.0
     lr_tensor = lr_tensor.unsqueeze(0).to(device)
     
-    # Upscale x2 (to 1280x720)
+    # Upscale x2 (to 2040, 1356)
     with torch.no_grad():
         sr_simple = simplesr(lr_tensor)
         sr_esrgan = esrgan(lr_tensor)
     
-    # Display (all 1280x720)
+    # Display (all 2040x1356)
     lr_np = (lr_tensor.squeeze().cpu().numpy().transpose(1,2,0) * 255).astype(np.uint8)
-    lr_display = cv2.resize(lr_np, (1280, 720))  # Upscale LR for comparison
+    lr_display = cv2.resize(lr_np, (2040, 1356))  # Upscale LR for comparison
     sr_simple_np = (sr_simple.squeeze().cpu().numpy().transpose(1,2,0) * 255).astype(np.uint8)
     sr_esrgan_np = (sr_esrgan.squeeze().cpu().numpy().transpose(1,2,0) * 255).astype(np.uint8)
-    hr_display = cv2.resize(hr_img, (1280, 720), interpolation=cv2.INTER_AREA)
+    hr_display = cv2.resize(hr_img, (2040, 1356), interpolation=cv2.INTER_AREA)
     
     # Perfect 2x2 layout
     top_row = np.hstack([lr_display, hr_display])
@@ -61,7 +61,7 @@ def test_div2k_game_size(div2k_path):
     combined = np.vstack([top_row, bottom_row])
     
     
-    combined_small = cv2.resize(combined, (combined.shape[1]//1, combined.shape[0]//1))
+    combined_small = cv2.resize(combined, (combined.shape[1]//2, combined.shape[0]//2))
     
     cv2.imshow("GAME SIZE: LR | HR | SimpleSR | ESRGAN", combined_small)
     print("ESC to close. Now exact game resolution test!")
