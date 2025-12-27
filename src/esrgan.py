@@ -68,10 +68,18 @@ class ESRGAN(nn.Module):
         #     nn.Conv2d(channels, channels * scale * scale, 3, 1, 1),
         #     nn.PixelShuffle(scale)
         # )
+
+        # v3
+        # self.upscale = nn.Sequential(
+        #     nn.Upsample(scale_factor=scale, mode='nearest'),
+        #     nn.Conv2d(channels, channels, 3, 1, 1),
+        #     nn.LeakyReLU(0.2, inplace=True) # Optional, depends on specific variant
+        # )
+
         self.upscale = nn.Sequential(
-            nn.Upsample(scale_factor=scale, mode='nearest'),
-            nn.Conv2d(channels, channels, 3, 1, 1),
-            nn.LeakyReLU(0.2, inplace=True) # Optional, depends on specific variant
+            nn.Conv2d(channels, channels * (scale ** 2), 3, 1, 1),
+            nn.PixelShuffle(scale),
+            nn.LeakyReLU(0.2, inplace=True)
         )
         
         # Reconstruction
