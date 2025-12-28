@@ -12,13 +12,11 @@ import os
 import glob
 from pathlib import Path
 
-# Load your models (exact same as realtime_demo)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 simplesr = SimpleSR().to(device)
 simplesr.load_state_dict(torch.load('models/simpleSR/v1.1/best_simple_sr.pth'))
 
-# esrgan = ESRGAN(scale=2, num_feat=64, num_block=23, num_grow_ch=32).to(device)
 esrgan = ESRGAN(scale=2, channels=64).to(device)
 esrgan.load_state_dict(torch.load('models/esrganSR/best_esrgan_sr.pth', map_location=device))
 
@@ -65,7 +63,7 @@ def test_div2k_game_size(div2k_path):
     sr_esrgan_display = cv2.cvtColor(sr_esrgan_np, cv2.COLOR_RGB2BGR)
     hr_display = cv2.cvtColor(cv2.resize(hr_img, (2040, 1356), interpolation=cv2.INTER_AREA), cv2.COLOR_RGB2BGR)
 
-    # Perfect 2x2 layout
+    # 2x2 layout
     top_row = np.hstack([lr_display, hr_display])
     bottom_row = np.hstack([sr_simple_display, sr_esrgan_display])
     combined = np.vstack([top_row, bottom_row])
@@ -81,10 +79,9 @@ def test_div2k_game_size(div2k_path):
 
 # RUN TEST
 if __name__ == "__main__":
-    # CHANGE THIS TO YOUR DIV2K PATH
     SCRIPT_DIR = Path(__file__).parent
     DATA_DIR = SCRIPT_DIR.parent / 'data'
-    DIV2K_PATH = DATA_DIR / 'DIV2K_train_HR/DIV2K_train_HR/'  # or wherever your HR PNGs are
+    DIV2K_PATH = DATA_DIR / 'DIV2K_train_HR/DIV2K_train_HR/' 
     
     test_div2k_game_size(DIV2K_PATH)
 
