@@ -10,7 +10,7 @@ This project aims to provide a **simple, extensible, and easy-to-run** upscaling
 
 ---
 
-## Features
+## Features (to-do)
 
 - Super-resolution upscaling with a custom CNN  
 - Fast inference with PyTorch  
