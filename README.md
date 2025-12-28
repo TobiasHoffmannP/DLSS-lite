@@ -29,7 +29,7 @@ This project aims to provide a **simple, extensible, and easy-to-run** upscaling
 
 ### Gameplay Screenshot Side by Side
 
-|TopLeft=LR, TopRight=HR, BottomLeft=SimpleSR, BottomRight=ESRGAN|
+|TopLeft=LR (1280x720), TopRight=HR(2560x1440), BottomLeft=SimpleSR, BottomRight=ESRGAN|
 |:----------------------------------:|
 | ![LR -- HR](extras/gameplay_test.png) |
 
