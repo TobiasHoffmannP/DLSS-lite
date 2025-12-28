@@ -45,7 +45,7 @@ class RRDBBlock(nn.Module):
         # Residual-in-Residual scaling (beta=0.2)
         return out * 0.2 + x
 
-# ESRGAN Generator (23 RRDB blocks!)
+# ESRGAN Generator 
 class ESRGAN(nn.Module):
     def __init__(self, scale=2, channels=64):
         super().__init__()
@@ -92,7 +92,7 @@ class ESRGAN(nn.Module):
     def forward(self, x):
         feat = self.head(x)
         body_out = self.body(feat)
-        out = body_out + feat  # Long skip!
+        out = body_out + feat  # Long skip
         out = self.upscale(out)
         out = self.tail(out)
         return out
