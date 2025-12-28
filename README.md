@@ -29,9 +29,9 @@ This project aims to provide a **simple, extensible, and easy-to-run** upscaling
 
 ### Gameplay Screenshot Side by Side
 
-| LR <-> HR | SimpleSR <-> ESRGAN |
-|:-------:|:-----------------:|
-| ![LR -- HR](extras/gameplay_test.png) |  |
+|TL=LR, TR=HR, BL=SimpleSR, BR=ESRGAN|
+|:----------------------------------:|
+| ![LR -- HR](extras/gameplay_test.png) |
 
 ---
 
